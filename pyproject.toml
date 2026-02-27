@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "entre-mundos-app"
+dynamic = ["version"]
+description = "Aplicação para gestão dos projetos da empresa Entre Mundos."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Marcus Filipe Reis" }
+]
+dependencies = [
+    "platformdirs>=3.0",
+    "streamlit",
+    "openpyxl",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "entre_mundos_app.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["entre_mundos_app*"]
+

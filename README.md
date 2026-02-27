@@ -1,2 +1,2 @@
-# viki-app
-A web application of a system for controlling clients and psychology consultations
+# Entre Mundos App
+Aplicação para gestão dos projetos da empresa Entre Mundos
