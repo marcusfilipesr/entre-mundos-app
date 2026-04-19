@@ -12,7 +12,10 @@ from entre_mundos_app.common import (
     form_add_participante,
     form_add_pacote,
     busca_tabela,
-    balanco_financeiro
+    balanco_financeiro,
+    container_com_edicao,
+    form_editar_participante,
+    form_editar_pacote,
 )
 
 def editar_projeto_aberto():
@@ -58,6 +61,12 @@ def main():
         if st.session_state["form_editar_projeto_aberto"]:
             form_editar_projeto()
 
+        if st.session_state["form_editar_participante_aberto"]:
+            form_editar_participante(st.session_state["editar_participante_id"])
+        
+        if st.session_state["form_editar_pacote_aberto"]:
+            form_editar_pacote(st.session_state["editar_pacote_id"])
+
         if st.session_state["projeto_a_gerir"] is not None:
             with st.container(border=True):
                 titulo_col, fechar_col = st.columns([0.95, 0.05], gap="xxsmall")
@@ -81,15 +90,19 @@ def main():
                     df_participante_do_projeto = participante_df[participante_df["projeto_id"] == st.session_state['projeto_a_gerir']['id']].reset_index(drop=True)
 
                     participantes_col.write(f"Inscritos **:primary[{len(df_participante_do_projeto['nome']):.0f}]**")
-                    for idx, pacote in df_participante_do_projeto.iterrows():
-                        participantes_col.write(f"`{idx + 1}` **{pacote['nome']}** de {(datetime.today() - pacote['data_nascimento']).days/365.25:.0f} anos")
+                    for idx, participante in df_participante_do_projeto.iterrows():
+                        with participantes_col:
+                            container_com_edicao(idx, participante, "participante")
+                        # participantes_col.write(f"`{idx + 1}` **{participante['nome']}** de {(datetime.today() - participante['data_nascimento']).days/365.25:.0f} anos")
 
                 if not pacote_df.empty:
                     df_pacote_do_projeto = pacote_df[pacote_df["projeto_id"] == st.session_state['projeto_a_gerir']['id']].reset_index(drop=True)
                     
                     pacotes_col.write(f"Pacotes **:primary[{len(df_pacote_do_projeto['nome']):.0f}]**")
                     for idx, pacote in df_pacote_do_projeto.iterrows():
-                        pacotes_col.write(f"`{idx + 1}` **{pacote['nome']}** ({pacote['lote']:.0f}° lote) no valor de R$ {pacote['valor']:.2f}")
+                        with pacotes_col:
+                            container_com_edicao(idx, pacote, "pacote")
+                        # pacotes_col.write(f"`{idx + 1}` **{pacote['nome']}** ({pacote['lote']:.0f}° lote) no valor de R$ {pacote['valor']:.2f}")
                     
                     st.write("")
                 

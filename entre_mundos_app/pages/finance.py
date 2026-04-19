@@ -4,7 +4,7 @@ from pathlib import Path
 
 # sys.path.append(Path(__file__).parent.parent)
 
-from entre_mundos_app.common import form_gasto, default_page_config, form_pagamento, balanco_financeiro
+from entre_mundos_app.common import form_gasto, default_page_config, form_pagamento, balanco_financeiro, busca_tabela
 
 def gasto_aberto():
     st.session_state["form_gasto_aberto"] = True
@@ -43,6 +43,13 @@ def main():
 
         if st.session_state["form_pagamento_aberto"]:
             form_pagamento()
+
+        pagamento_df = busca_tabela("pagamento")
+        st.write("Pagamentos")
+        st.write(pagamento_df)
+        gasto_df = busca_tabela("gasto")
+        st.write("Gastos")
+        st.write(gasto_df)
 
 
 

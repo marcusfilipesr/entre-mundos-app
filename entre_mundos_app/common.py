@@ -105,12 +105,16 @@ def projeto_info(projeto, status):
 def fecha_forms():
     st.session_state["form_gasto_aberto"] = False
     st.session_state["form_editar_projeto_aberto"] = False
+    st.session_state["form_editar_participante_aberto"] = False
+    st.session_state["form_editar_pacote_aberto"] = False
     st.session_state["form_add_participante_aberto"] = False
     st.session_state["form_add_pacote_aberto"] = False
     st.session_state["form_pagamento_aberto"] = False
 
 
     st.session_state["btn_busca_info"] = False
+    st.session_state["editar_participante_id"] = None
+    st.session_state["editar_pacote_id"] = None
 
 
 def salva_tabela(nome_tabela, tabela:pd.DataFrame, fechar_forms=False, acao="inserir"):
@@ -267,12 +271,12 @@ def set_buscar_info(bool):
 def deletar_objeto(nome_tabela, id):
     st.write("Tem certeza que deseja deletar?")
     del_btn = st.button(
-        label=":red[:material/delete: Excluir projeto]",
+        label=f":red[:material/delete: Excluir {nome_tabela}]",
         type="secondary",
     )
     if del_btn:
         acao_salvar(nome_tabela, acao="remover", id=id)
-        st.rerun()
+        st.rerun() 
 
 def botao_cancelar(key):
     st.button(
@@ -282,7 +286,188 @@ def botao_cancelar(key):
         width="stretch",
     )
 
-def gestao_projeto_container():
+def editar_participante_aberto(id):
+    st.session_state["form_editar_participante_aberto"] = True
+    st.session_state["editar_participante_id"] = id
+
+def form_editar_participante(id):
+    if id is not None:
+        with st.container(border=True):
+            participante_df = busca_tabela("participante")
+            # Dados na base
+            nome_selecionado = participante_df[participante_df["id"] == id]["nome"].values[0]
+            cpf_selecionado = participante_df[participante_df["id"] == id]["cpf"].values[0]
+            data_nascimento_selecionado = pd.to_datetime(participante_df[participante_df["id"] == id]["data_nascimento"].values[0])
+            email_selecionado = participante_df[participante_df["id"] == id]["email"].values[0]
+            telefone_selecionado = participante_df[participante_df["id"] == id]["telefone"].values[0]
+            endereco_selecionado = participante_df[participante_df["id"] == id]["endereco"].values[0]
+            nome_emergencia_selecionado = participante_df[participante_df["id"] == id]["nome_emergencia"].values[0]
+            telefone_emergencia_selecionado = participante_df[participante_df["id"] == id]["telefone_emergencia"].values[0]
+            projeto_id = participante_df[participante_df["id"] == id]["projeto_id"].values[0]
+
+            st.write("**Formulário do Participante**")
+            col1, col2, col3 = st.columns(3)
+            col1.text_input(
+                label="Nome",
+                key="participante_nome",
+                value=nome_selecionado,
+            )
+            cpf = col2.text_input(
+                label="CPF",
+                key="participante_cpf",
+                help="Somente os números",
+                value=cpf_selecionado
+            )
+            if cpf:
+                if len(cpf) != 11:
+                    st.error("Por favor verifique o cpf inserido!")
+
+            col3.date_input(
+                label="Data de Nascimento",
+                key="participante_data_nascimento",
+                format="DD/MM/YYYY",
+                min_value=datetime(1900,1,1),
+                value=data_nascimento_selecionado,
+            )
+            col1.text_input(
+                label="E-mail",
+                placeholder="exemplo@email.com",
+                key="participante_email",
+                value=email_selecionado,
+            )
+            col2.text_input(
+                label="Número de telefone",
+                key="participante_telefone",
+                help="Somente os números",
+                value=telefone_selecionado,
+            )
+            st.text_input(
+                label="Endereço",
+                key="participante_endereco",
+                help="Separe o endereço por virgulas. Exemplo: rua, número, complemento, bairro, cidade, estado, CEP.",
+                value=endereco_selecionado,
+            )
+            st.write("**Contato de Emergência**")
+            emerg_col1, emerg_col2, emerg_col3 = st.columns(3)
+            emerg_col1.text_input(
+                label="Nome",
+                key="participante_nome_emergencia",
+                value=nome_emergencia_selecionado,
+            )
+            emerg_col2.text_input(
+                label="Número de telefone",
+                key="participante_telefone_emergencia",
+                help="Somente os números",
+                value=telefone_emergencia_selecionado,
+            )
+            st.session_state["participante_projeto_id"] = projeto_id
+
+            add_col, cancela_col = emerg_col1.columns(2)
+
+            add_col.button(
+                label=":material/save: Salvar",
+                key="btn_salvar_participante",
+                on_click=acao_salvar,
+                args=("participante", None, True, "editar"),
+                kwargs=dict(id=id),
+                width="stretch",
+            )
+
+            with cancela_col:
+                botao_cancelar("cancela_editar_participante")
+
+        deletar_col, _ = emerg_col2.columns(2)
+
+        btn_deletar = deletar_col.button(
+            label=":red[:material/delete: Excluir]",
+            type="tertiary",
+            width="stretch"
+        )
+
+        if btn_deletar:
+            deletar_objeto("participante", id)
+            
+
+def editar_pacote_aberto(id):
+    st.session_state["form_editar_pacote_aberto"] = True
+    st.session_state["editar_pacote_id"] = id
+
+def form_editar_pacote(id):
+    if id is not None:
+        with st.container(border=True):
+            pacote_df = busca_tabela("pacote")
+            # Dados na base
+            nome_selecionado = pacote_df[pacote_df["id"] == id]["nome"].values[0]
+            lote_selecionado = pacote_df[pacote_df["id"] == id]["lote"].values[0]
+            valor_selecionado = pacote_df[pacote_df["id"] == id]["valor"].values[0]
+            projeto_id = pacote_df[pacote_df["id"] == id]["projeto_id"].values[0]
+
+            st.write("**Formulário do Lote**")
+            col1, col2, col3 = st.columns(3)
+            col1.text_input(
+                label="Nome",
+                key="pacote_nome",
+                value=nome_selecionado,
+            )
+            col2.number_input(
+                label="Lote",
+                key="pacote_lote",
+                min_value=1,
+                max_value=5,
+                value=lote_selecionado,
+            )
+            col3.number_input(
+                label="Valor (R$)",
+                key="pacote_valor",
+                min_value=0.0,
+                value=valor_selecionado,
+            )
+            st.session_state["pacote_projeto_id"] = projeto_id
+
+            add_col, cancela_col = col1.columns(2)
+
+            add_col.button(
+                label=":material/save: Salvar",
+                key="btn_salvar_pacote",
+                on_click=acao_salvar,
+                args=("pacote", None, True, "editar"),
+                kwargs=dict(id=id),
+                width="stretch",
+            )
+
+            with cancela_col:
+                botao_cancelar("cancela_editar_pacote")
+
+            deletar_col, _ = col2.columns(2)
+
+            btn_deletar = deletar_col.button(
+                label=":red[:material/delete: Excluir]",
+                type="tertiary",
+                width="stretch"
+            )
+
+            if btn_deletar:
+                deletar_objeto("pacote", id)
+
+def container_com_edicao(num, tabela, tipo):
+    with st.container(border=False):
+        texto_col, botao_col = st.columns([.85,.15], vertical_alignment="center")
+        id = tabela['id']
+        if tipo == "participante":
+            texto_col.write(f"`{num + 1}` **{tabela['nome']}** de {(datetime.today() - tabela['data_nascimento']).days/365.25:.0f} anos")
+            func = editar_participante_aberto
+        elif tipo == "pacote":
+            texto_col.write(f"`{num + 1}` **{tabela['nome']}** ({tabela['lote']:.0f}° lote) no valor de R$ {tabela['valor']:.2f}")
+            func = editar_pacote_aberto
+        
+        botao_col.button(
+            label=":material/edit:",
+            key=f"editar_{tipo}_{id}",
+            on_click=func,
+            args=(id,)
+        )
+
+def gestao_financeira_container():
     dict_projetos = busca_nomes("projeto")
     projeto = st.selectbox(
         label="Selecione o projeto",
@@ -291,16 +476,16 @@ def gestao_projeto_container():
         # label_visibility="collapsed"
     )
     if projeto is not None:
-        editar_projeto_id = get_key(dict_projetos, projeto)
+        gerir_projeto_id = get_key(dict_projetos, projeto)
         projeto_df = busca_tabela("projeto")
 
         lista_tipos = [k for k, v in tipo_padrao_projeto.items()]
-        tipo_selecionado = projeto_df[projeto_df["id"] == editar_projeto_id]["tipo"].values[0]
-        nome_selecionado = projeto_df[projeto_df["id"] == editar_projeto_id]["nome"].values[0]
-        qtd_pessoas_selecionado = projeto_df[projeto_df["id"] == editar_projeto_id]["qtd_pessoas"].values[0]
-        data_inicio_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == editar_projeto_id]["data_inicio"].values[0])
-        data_fim_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == editar_projeto_id]["data_fim"].values[0])
-        local_selecionado = projeto_df[projeto_df["id"] == editar_projeto_id]["local"].values[0]
+        tipo_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["tipo"].values[0]
+        nome_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["nome"].values[0]
+        qtd_pessoas_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["qtd_pessoas"].values[0]
+        data_inicio_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_inicio"].values[0])
+        data_fim_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_fim"].values[0])
+        local_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["local"].values[0]
 
         if st.button(
             label=":material/settings: Gerir",
@@ -314,7 +499,43 @@ def gestao_projeto_container():
                 "data_inicio": data_inicio_selecionado,
                 "data_fim": data_fim_selecionado,
                 "local": local_selecionado,
-                "id": editar_projeto_id,
+                "id": gerir_projeto_id,
+            }
+
+def gestao_projeto_container():
+    dict_projetos = busca_nomes("projeto")
+    
+    projeto = st.selectbox(
+        label="Selecione o projeto",
+        options=[v for k, v in dict_projetos.items()],
+        key="gerir_projeto",
+        # label_visibility="collapsed"
+    )
+    if projeto is not None:
+        gerir_projeto_id = get_key(dict_projetos, projeto)
+        projeto_df = busca_tabela("projeto")
+
+        lista_tipos = [k for k, v in tipo_padrao_projeto.items()]
+        tipo_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["tipo"].values[0]
+        nome_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["nome"].values[0]
+        qtd_pessoas_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["qtd_pessoas"].values[0]
+        data_inicio_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_inicio"].values[0])
+        data_fim_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_fim"].values[0])
+        local_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["local"].values[0]
+
+        if st.button(
+            label=":material/settings: Gerir",
+            width="stretch",
+            type="primary"
+        ):
+            st.session_state["projeto_a_gerir"] = {
+                "tipo":tipo_selecionado,
+                "nome": nome_selecionado,
+                "qtd_pessoas": qtd_pessoas_selecionado,
+                "data_inicio": data_inicio_selecionado,
+                "data_fim": data_fim_selecionado,
+                "local": local_selecionado,
+                "id": gerir_projeto_id,
             }
 
 def form_editar_projeto():
@@ -685,9 +906,14 @@ def create_dataframe():
                 print(f"{k}: {v}")
 
 def default_page_config():
+
+    assets = Path(__file__).parent / "assets"
+    logo = assets / "logo.png"
+
     st.set_page_config(
         page_title="Entre Mundos",
         layout="wide",
+        page_icon=str(logo),
     )
 
 def navbar():
