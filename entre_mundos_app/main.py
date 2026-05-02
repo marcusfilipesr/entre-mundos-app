@@ -13,6 +13,10 @@ def init_session():
         st.session_state["form_editar_participante_aberto"] = False
     if "form_editar_pacote_aberto" not in st.session_state:
         st.session_state["form_editar_pacote_aberto"] = False
+    if "form_editar_pagamento" not in st.session_state:
+        st.session_state["form_editar_pagamento"] = False
+    if "form_editar_pagamento_aberto" not in st.session_state:
+        st.session_state["form_editar_pagamento_aberto"] = False
     if "btn_busca_info" not in st.session_state:
         st.session_state["btn_busca_info"] = False
     if "form_add_participante_aberto" not in st.session_state:
