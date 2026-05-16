@@ -15,6 +15,7 @@ dependencies = [
     "platformdirs>=3.0",
     "streamlit",
     "openpyxl",
+    "plotly",
 ]
 
 [tool.setuptools.dynamic]

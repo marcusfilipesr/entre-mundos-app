@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import time
 
+import plotly.express as px
 from pathlib import Path
 from datetime import datetime
 
@@ -113,6 +114,9 @@ def fecha_forms():
     st.session_state["form_add_pacote_aberto"] = False
     st.session_state["form_pagamento_aberto"] = False
     st.session_state["form_editar_pagamento"] = False
+    st.session_state["form_editar_gasto"] = False
+    st.session_state["form_editar_gasto_aberto"] = False
+    st.session_state["editar_gasto_selecao"] = False
 
     st.session_state["btn_busca_info"] = False
     st.session_state["editar_participante_id"] = None
@@ -270,14 +274,14 @@ def set_buscar_info(bool):
     st.session_state["btn_busca_info"] = bool
 
 @st.dialog("Segunda chance...")
-def deletar_objeto(nome_tabela, id):
+def deletar_objeto(nome_tabela, id, filtro=None):
     st.write("Tem certeza que deseja deletar?")
     del_btn = st.button(
         label=f":red[:material/delete: Excluir {nome_tabela}]",
         type="secondary",
     )
     if del_btn:
-        acao_salvar(nome_tabela, acao="remover", id=id)
+        acao_salvar(nome_tabela, filtro=filtro, acao="remover", id=id, fechar_forms=True)
         st.rerun() 
 
 def botao_cancelar(key):
@@ -835,7 +839,7 @@ def form_editar_pagamento():
                 label="Data",
                 key="pagamento_data",
                 format="DD/MM/YYYY",
-                value=data_selecionado.item(),
+                value=pd.to_datetime(data_selecionado).to_pydatetime(),
             )
             if participante is not None and pacote is not None:
                 participante_id = get_key(dict_participante, participante)
@@ -889,15 +893,15 @@ def form_editar_gasto_aberto():
 
 def form_editar_gasto_fechado():
     st.session_state["form_editar_gasto_aberto"] = False
+    st.session_state["editar_gasto_selecao"] = False
+
+def editar_gasto_selecao():
+    st.session_state["editar_gasto_selecao"] = True
 
 def form_editar_gasto():
     with st.container(border=True):
         gasto_df = busca_tabela("gasto")
         projeto_df = busca_tabela("projeto")
-        projeto_ids = list(set(gasto_df["projeto_id"].to_list()))
-        projeto_com_gasto = {}
-        for id in projeto_ids:
-            projeto_com_gasto[int(id)] = projeto_df[projeto_df["id"] == id]["nome"].values[0]
 
         # "participante_id",
         # "projeto_id",
@@ -906,139 +910,162 @@ def form_editar_gasto():
         # "valor_pago",
         # "valor_restante",
         # "obs",
+        fonte_col, botoes_col, _ = st.columns(3, vertical_alignment="bottom")
         selec_col, busca_col, btn_3_col = st.columns(3, vertical_alignment="bottom")
-
-        dict_projetos = busca_nomes("projeto")
-        projeto = selec_col.selectbox(
-            label="Escolha o projeto",
-            options=projeto_com_gasto.values(),
-            key="escolher_projeto_gasto",
+        lista_fonte = [v for k, v in fonte_padrao_gasto.items()]
+        fonte = fonte_col.selectbox(
+            label="Fonte",
+            options=lista_fonte,
+            key="gasto_fonte_editar",
         )
-        projeto_id = get_key(dict_projetos, projeto)
-        gasto_df_filtrado = gasto_df[gasto_df["projeto_id"] == projeto_id]
-
-        dict_gasto = {}
-        for idx, linha in gasto_df_filtrado.iterrows():
-            # info_col, btn_col = st.columns([.8,.2], vertical_alignment="center")
-            # linha_container = info_col.container(border=True)
-            dict_gasto[int(linha['id'])] = f"O valor de R${linha['valor_pago']} foi pago para {linha['nome']} no dia {linha['data'].strftime('%d/%m/%Y')}"
-
-        linha_gasto = busca_col.selectbox(
-            label="Escolha o gasto",
-            options=dict_gasto.values(),
-            key="escolher_linha_gasto"
+        fonte_key = get_key(fonte_padrao_gasto, fonte)
+        btn_ir, btn_x, _= botoes_col.columns(3, vertical_alignment="center")
+        btn_go = btn_ir.button(
+            label="Prosseguir",
+            key="selecionar_fonte_gasto",
+            on_click=editar_gasto_selecao,
+            width="stretch"
         )
-        gasto_id = get_key(dict_gasto, linha_gasto)
-
-        select_btn_col, cancela_btn_col, _ = btn_3_col.columns(3)
-
-        select_btn_col.button(
-            label="Select",
-            key="gasto_select_btn",
-            on_click=form_editar_gasto_aberto,
+        btn_x.button(
+            label=":red[:material/cancel: Cancelar]",
+            key="fecha_editar_gasto",
+            on_click=fecha_forms,
             width="stretch"
         )
 
-        with cancela_btn_col:
-            botao_cancelar("cancela_edicao_gasto")
+        if st.session_state["editar_gasto_selecao"]:
+            if fonte_key != "empresa":
+                projeto_ids = list(set(gasto_df["projeto_id"].to_list()))
+                projeto_ids.pop(0)
+                projeto_com_gasto = {}
+                for id in projeto_ids:
+                    projeto_com_gasto[int(id)] = projeto_df[projeto_df["id"] == id]["nome"].values[0]
+            else:
+                projeto_com_gasto = {}
 
-        if st.session_state["form_editar_gasto_aberto"]:
-            lista_fonte = [v for k, v in fonte_padrao_gasto.items()]
-            fonte_selecionado = fonte_padrao_gasto[gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["participante_id"].values[0]]
-            categoria_selecionado = 
-            valor_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["valor_pago"].values[0]
-            data_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["data"].values[0]
-            obs_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["obs"].values[0]
-
-            if np.isnan(obs_selecionado):
-                obs_selecionado = ""
-
-            st.write("**Formulário de gasto**")
-
-            
-            col3.text_input(
-                label="Nome",
-                key="gasto_nome"
-            )
             dict_projetos = busca_nomes("projeto")
-            projeto = col1.selectbox(
-                label="Nome do Projeto",
-                options=[v for k, v in dict_projetos.items()],
+            projeto = selec_col.selectbox(
+                label="Escolha o projeto",
+                options=projeto_com_gasto.values(),
                 disabled=(fonte_key != "projeto"),
-                key="gasto_projeto"
-            )
-            st.session_state["gasto_projeto_id"] = get_key(dict_projetos, projeto)
-            col2.number_input(
-                label="Valor (R$)",
-                min_value=0.0,
-                key="gasto_valor"
-            )
-            col3.date_input(
-                label="Data",
-                key="gasto_data",
-                format="DD/MM/YYYY"
-            )
-            col1, col2, col3 = st.columns(3)
-            fonte = col1.selectbox(
-                label="Fonte",
-                options=lista_fonte,
-                key="gasto_fonte",
-                index=lista_fonte.index(fonte_selecionado),
-            )
-            fonte_key = get_key(fonte_padrao_gasto, fonte)
-
-            col2.selectbox(
-                label="Categoria",
-                options=[v for k, v in categoria_padrao_gasto[fonte_key].items()],
-                key="gasto_categoria"
+                key="escolher_projeto_gasto",
+                index=0,
             )
 
-            valor_pago = col3.number_input(
-                label="Valor pago (R$)",
-                key="gasto_valor_pago",
-                min_value=0.0,
-                value=valor_selecionado
-            )
-            col1.date_input(
-                label="Data",
-                key="gasto_data",
-                format="DD/MM/YYYY",
-                value=data_selecionado.item(),
-            )
+            if fonte_key == "empresa":
+                projeto_id = 0
+            else:
+                projeto_id = get_key(dict_projetos, projeto)
+            gasto_df_filtrado = gasto_df[gasto_df["projeto_id"] == projeto_id]
 
-            col2.text_area(
-                label="Observações",
-                key="gasto_obs",
-                value=obs_selecionado,
-            )
-            
-            salvar_gasto_col, cancela_editar_col, delete_col = col1.columns(3)
+            dict_gasto = {}
+            for idx, linha in gasto_df_filtrado.iterrows():
+                # info_col, btn_col = st.columns([.8,.2], vertical_alignment="center")
+                # linha_container = info_col.container(border=True)
+                dict_gasto[int(linha['id'])] = f"O valor de R${linha['valor']} foi pago para {linha['nome']} no dia {linha['data'].strftime('%d/%m/%Y')}"
 
-            salvar_gasto_col.button(
-                label=":material/save: Salvar",
-                key="botao_salvar_gasto",
-                type="primary",
-                on_click=acao_salvar,
-                args=("gasto", None, True, "editar"),
-                kwargs=dict(id=gasto_id),
+            linha_gasto = busca_col.selectbox(
+                label="Escolha o gasto",
+                options=dict_gasto.values(),
+                key="escolher_linha_gasto"
+            )
+            gasto_id = get_key(dict_gasto, linha_gasto)
+
+            select_btn_col, cancela_btn_col, _ = btn_3_col.columns(3)
+
+            select_btn_col.button(
+                label="Select",
+                key="gasto_select_btn",
+                on_click=form_editar_gasto_aberto,
                 width="stretch"
             )
 
-            cancela_editar_col.button(
-                label=":red[:material/cancel: Cancelar]",
-                key="cancela_editar_gasto",
-                on_click=form_editar_gasto_fechado,
-                width="stretch",
-            )
+            cancela_btn_col.button(
+                    label=":red[:material/cancel: Cancelar]",
+                    key="cancela_editar_gasto_form",
+                    on_click=form_editar_gasto_fechado,
+                    width="stretch",
+                )
 
-            btn_deletar = delete_col.button(
-                label=":red[:material/delete: Excluir]",
-                type="tertiary",
-                width="stretch"
-            )
+            if st.session_state["form_editar_gasto_aberto"]:
+                lista_projetos = [v for k, v in dict_projetos.items()]
+                lista_categoria = [v for k, v in categoria_padrao_gasto[fonte_key].items()]
+                fonte_selecionado = fonte_padrao_gasto[gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["fonte"].values[0]]
+                fonte_key_selecionado = get_key(fonte_padrao_gasto, fonte_selecionado)
+                nome_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["nome"].values[0]
+                categoria_selecionado = categoria_padrao_gasto[fonte_key_selecionado][gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["categoria"].values[0]]
+                valor_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["valor"].values[0]
+                data_selecionado = gasto_df_filtrado[gasto_df_filtrado["id"] == gasto_id]["data"].values[0]
+                st.write("**Formulário de gasto**")
+                col1, col2, col3 = st.columns(3)
+                fonte = col1.selectbox(
+                    label="Fonte",
+                    options=[v for k, v in fonte_padrao_gasto.items()],
+                    key="gasto_fonte",
+                    index=lista_fonte.index(fonte_selecionado),
+                    disabled=True
+                )
+                fonte_key = get_key(fonte_padrao_gasto, fonte)
+                col2.selectbox(
+                    label="Categoria",
+                    options=lista_categoria,
+                    key="gasto_categoria",
+                    index=lista_categoria.index(categoria_selecionado)
+                )
+                col3.text_input(
+                    label="Nome",
+                    key="gasto_nome",
+                    value=nome_selecionado,
+                )
+                projeto = col1.selectbox(
+                    label="Nome do Projeto",
+                    options=lista_projetos,
+                    disabled=True,
+                    key="gasto_projeto",
+                    index=lista_projetos.index(projeto) if projeto is not None else 0,
+                )
+                st.session_state["gasto_projeto_id"] = projeto_id
 
-            if btn_deletar:
-                deletar_objeto("gasto", gasto_id)
+                col2.number_input(
+                    label="Valor (R$)",
+                    min_value=0.0,
+                    key="gasto_valor",
+                    value=valor_selecionado,
+                )
+                col3.date_input(
+                    label="Data",
+                    key="gasto_data",
+                    format="DD/MM/YYYY",
+                    value=pd.to_datetime(data_selecionado).to_pydatetime(),
+                )
+                
+                salvar_gasto_col, cancela_editar_col, delete_col = col1.columns(3)
+
+                salvar_gasto_col.button(
+                    label=":material/save: Salvar",
+                    key="botao_salvar_gasto",
+                    type="primary",
+                    on_click=acao_salvar,
+                    args=("gasto", fonte_key, True, "editar"),
+                    kwargs=dict(id=gasto_id),
+                    width="stretch"
+                )
+
+                cancela_editar_col.button(
+                    label=":red[:material/cancel: Cancelar]",
+                    key="cancela_editar_gasto",
+                    on_click=form_editar_gasto_fechado,
+                    width="stretch",
+                )
+
+                btn_deletar = delete_col.button(
+                    label=":red[:material/delete: Excluir]",
+                    type="tertiary",
+                    width="stretch"
+                )
+
+                if btn_deletar:
+                    deletar_objeto("gasto", gasto_id, filtro=fonte_key)
 
 def form_pagamento():
     with st.container(border=True):
@@ -1097,8 +1124,8 @@ def form_pagamento():
             valor_restante = valor_total - valor_pago
             col1.write(f"Valor restante do pacote: :primary[**R${valor_restante:.2f}**]")
 
-            st.session_state["pagamento_particiante_id"] = get_key(dict_participante, participante)
-            st.session_state["pagamento_pacote_id"] = get_key(dict_pacote, pacote)
+            st.session_state["pagamento_participante_id"] = participante_id
+            st.session_state["pagamento_pacote_id"] = pacote_id
             st.session_state["pagamento_projeto_id"] = projeto_id
             st.session_state["pagamento_valor_restante"] = valor_restante
 
@@ -1120,6 +1147,7 @@ def form_pagamento():
 
         with cancela_gasto_col:
             botao_cancelar("cancela_pagamento")
+
         
 def balanco_financeiro():
     with st.container(border=True, horizontal_alignment="center"):
@@ -1179,7 +1207,11 @@ def form_gasto():
             disabled=(fonte_key != "projeto"),
             key="gasto_projeto"
         )
-        st.session_state["gasto_projeto_id"] = get_key(dict_projetos, projeto)
+        if fonte_key == "empresa":
+            st.session_state["gasto_projeto_id"] = 0
+        else:
+            st.session_state["gasto_projeto_id"] = get_key(dict_projetos, projeto)
+
         col2.number_input(
             label="Valor (R$)",
             min_value=0.0,
