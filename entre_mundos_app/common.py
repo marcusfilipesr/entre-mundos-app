@@ -87,6 +87,16 @@ categoria_padrao_gasto = {
     },
 }
 
+decoradores_gasto = {
+    "transporte": ":taxi: Transporte",
+    "alimentacao": ":hamburger: Alimentação",
+    "hospedagem": ":hotel: Hospedagem",
+    "servico": ":wrench: Serviços",
+    "brinde": ":gift: Kit",
+    "outros": ":heavy_plus_sign: Extras",
+    "diaria": ":dollar: Diária",
+}
+
 tipo_padrao_projeto = {
     "expedicao": "Expedição",
     "evento": "Evento",
@@ -105,6 +115,7 @@ def projeto_info(projeto, status):
         """)
 
 def fecha_forms():
+    st.session_state["form_add_projeto"] = False
     st.session_state["form_gasto_aberto"] = False
     st.session_state["form_editar_projeto_aberto"] = False
     st.session_state["form_editar_participante_aberto"] = False
@@ -230,8 +241,8 @@ def busca_nomes(nome_tabela, projeto_id=None):
         return tabela_df_filtrada[["nome", "id"]].set_index("id").to_dict()["nome"]
 
 def form_projeto():
-    with st.form(key="form_novo_projeto", enter_to_submit=False, border=True):
-        st.write("**Formulário novo projeto**")
+    st.write("**Formulário novo projeto**")
+    with st.container(border=True):
         proj_col1, proj_col2, proj_col3 = st.columns(3)
         proj_col1.selectbox(
             label="Tipo",
@@ -261,14 +272,20 @@ def form_projeto():
             label="Localização",
             key="projeto_local"
         )
+
+        save_btn_col, cancel_btn_col = proj_col1.columns(2)
         
-        st.form_submit_button(
+        save_btn_col.button(
             label="Salvar projeto",
             key="salvar_novo_projeto",
             type="primary",
             on_click=acao_salvar,
             args=("projeto",),
+            width="stretch"
         )
+
+        with cancel_btn_col:
+            botao_cancelar("cancelar_novo_projeto")
 
 def set_buscar_info(bool):
     st.session_state["btn_busca_info"] = bool
@@ -474,39 +491,122 @@ def container_com_edicao(num, tabela, tipo):
         )
 
 def gestao_financeira_container():
-    dict_projetos = busca_nomes("projeto")
-    projeto = st.selectbox(
-        label="Selecione o projeto",
-        options=[v for k, v in dict_projetos.items()],
-        key="gerir_projeto",
-        # label_visibility="collapsed"
-    )
-    if projeto is not None:
-        gerir_projeto_id = get_key(dict_projetos, projeto)
-        projeto_df = busca_tabela("projeto")
+    st.write("**Resumo**")
+    with st.container(border=True):
+        dict_projetos = busca_nomes("projeto")
+        lista_projetos = [v for k, v in dict_projetos.items()]
+        st.write("**Escolha um projeto**")
+        col_esquerda, col_centro, col_direita = st.columns(3)
+        projeto = col_esquerda.selectbox(
+            label="Selecione o projeto",
+            options=lista_projetos,
+            key="gerir_projeto",
+            label_visibility="collapsed"
+        )
+        st.divider()
+        projeto_id = get_key(dict_projetos, projeto)
+        pagamento_df = busca_tabela("pagamento")
+        gasto_df = busca_tabela("gasto")
+        participante_df = busca_tabela("participante")
+        pacote_df = busca_tabela("pacote")
 
-        lista_tipos = [k for k, v in tipo_padrao_projeto.items()]
-        tipo_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["tipo"].values[0]
-        nome_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["nome"].values[0]
-        qtd_pessoas_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["qtd_pessoas"].values[0]
-        data_inicio_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_inicio"].values[0])
-        data_fim_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_fim"].values[0])
-        local_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["local"].values[0]
+        if projeto is not None:
+         
+            pagamento_filtrado = pagamento_df[pagamento_df['projeto_id'] == projeto_id]
+            gasto_filtrado = gasto_df[gasto_df['projeto_id'] == projeto_id]
+            total_pagamentos = pagamento_filtrado['valor_pago'].sum()
+            total_gasto = gasto_filtrado['valor'].sum()
 
-        if st.button(
-            label=":material/settings: Gerir",
-            width="stretch",
-            type="primary"
-        ):
-            st.session_state["projeto_a_gerir"] = {
-                "tipo":tipo_selecionado,
-                "nome": nome_selecionado,
-                "qtd_pessoas": qtd_pessoas_selecionado,
-                "data_inicio": data_inicio_selecionado,
-                "data_fim": data_fim_selecionado,
-                "local": local_selecionado,
-                "id": gerir_projeto_id,
+            balanco = total_pagamentos - total_gasto
+
+            st.write(f"O total recebido neste projeto foi de **R${total_pagamentos}**.")
+            st.write(f"Foi necessário gastar o montante de **R${total_gasto}** com os fornecedores.")
+            st.write(f"O balanço foi **{'positivo' if balanco > 0 else 'negativo'}** e gerou um saldo de :{'red' if total_pagamentos <= 0 else 'green'}[**R${balanco:.2f}**].")
+
+            pagamento_resumo = {
+                ":sparkles: Entre Munders :sparkles:": [],
+                ":moneybag: Adquiriram o pacote": [],
+                ":dollar: No valor de": [],
+                ":calendar: No dia": [],
+                ":black_nib: Obs.": [],
             }
+            for row in pagamento_filtrado.loc[:, "participante_id"]:
+                pagamento_resumo[":sparkles: Entre Munders :sparkles:"].append(participante_df[participante_df["id"] == row]['nome'].values[0].title())
+
+            for row in pagamento_filtrado.loc[:, "pacote_id"]:
+                pagamento_resumo[":moneybag: Adquiriram o pacote"].append(pacote_df[pacote_df["id"] == row]['nome'].values[0].title())
+
+            for data in pagamento_filtrado.loc[:, "data"]:
+                pagamento_resumo[":calendar: No dia"].append(
+                    data.to_pydatetime().strftime("%d/%m/%Y")
+                )
+            for valor in pagamento_filtrado.loc[:, "valor_pago"]:
+                pagamento_resumo[":dollar: No valor de"].append(
+                    f"**R${valor:.2f}**"
+                )
+            for obs in pagamento_filtrado.loc[:, "obs"]:
+                pagamento_resumo[":black_nib: Obs."].append(
+                    "" if np.isnan(obs) else obs
+                )
+
+            st.write("")
+            st.write("Veja abaixo uma tabela resumo dos pagamentos e gastos")
+            st.write("**Pagamentos**")
+            st.table(
+                data=pagamento_resumo,
+                border="horizontal"
+            )
+
+            gastos_resumo = {
+                ":two_women_holding_hands: Parceiros": [],
+                ":hammer: Forneceram": [],
+                ":money_with_wings: Cobraram": [],
+                ":calendar: No dia": [],
+            }
+
+            for nome in gasto_filtrado.loc[:, "nome"]:
+                gastos_resumo[":two_women_holding_hands: Parceiros"].append(nome)
+            for categoria in gasto_filtrado.loc[:, "categoria"]:
+                gastos_resumo[":hammer: Forneceram"].append(decoradores_gasto[categoria])
+            for valor in gasto_filtrado.loc[:, "valor"]:
+                gastos_resumo[":money_with_wings: Cobraram"].append(
+                    f"**R${valor:.2f}**"
+                )
+            for data in gasto_filtrado.loc[:, "data"]:
+                gastos_resumo[":calendar: No dia"].append(
+                    data.to_pydatetime().strftime("%d/%m/%Y")
+                )
+
+            st.write("**Gastos**")
+            st.table(
+                data=gastos_resumo,
+                border="horizontal"
+            )
+                # gerir_projeto_id = get_key(dict_projetos, projeto)
+                # projeto_df = busca_tabela("projeto")
+
+                # lista_tipos = [k for k, v in tipo_padrao_projeto.items()]
+                # tipo_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["tipo"].values[0]
+                # nome_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["nome"].values[0]
+                # qtd_pessoas_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["qtd_pessoas"].values[0]
+                # data_inicio_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_inicio"].values[0])
+                # data_fim_selecionado = pd.to_datetime(projeto_df[projeto_df["id"] == gerir_projeto_id]["data_fim"].values[0])
+                # local_selecionado = projeto_df[projeto_df["id"] == gerir_projeto_id]["local"].values[0]
+
+                # if st.button(
+                #     label=":material/settings: Gerir",
+                #     width="stretch",
+                #     type="primary"
+                # ):
+                #     st.session_state["projeto_a_gerir"] = {
+                #         "tipo":tipo_selecionado,
+                #         "nome": nome_selecionado,
+                #         "qtd_pessoas": qtd_pessoas_selecionado,
+                #         "data_inicio": data_inicio_selecionado,
+                #         "data_fim": data_fim_selecionado,
+                #         "local": local_selecionado,
+                #         "id": gerir_projeto_id,
+                #     }
 
 def gestao_projeto_container():
     dict_projetos = busca_nomes("projeto")
@@ -545,6 +645,7 @@ def gestao_projeto_container():
             }
 
 def form_editar_projeto():
+    st.write("**Edição de Projeto**")
     with st.container(border=True):
         selec_col, busca_col, _ = st.columns(3, vertical_alignment="bottom")
         
@@ -746,6 +847,7 @@ def form_editar_pagamento_fechado():
     st.session_state["form_editar_pagamento_aberto"] = False
 
 def form_editar_pagamento():
+    st.write("**Edição de Pagamento**")
     with st.container(border=True):
         pagamento_df = busca_tabela("pagamento")
         projeto_df = busca_tabela("projeto")
@@ -813,7 +915,6 @@ def form_editar_pagamento():
             if np.isnan(obs_selecionado):
                 obs_selecionado = ""
 
-            st.write("**Formulário de Pagamento**")
             col1, col2, col3 = st.columns(3)
             participante = col1.selectbox(
                 label="Pagante",
@@ -899,6 +1000,7 @@ def editar_gasto_selecao():
     st.session_state["editar_gasto_selecao"] = True
 
 def form_editar_gasto():
+    st.write("**Edição de Gasto**")
     with st.container(border=True):
         gasto_df = busca_tabela("gasto")
         projeto_df = busca_tabela("projeto")
@@ -1068,8 +1170,8 @@ def form_editar_gasto():
                     deletar_objeto("gasto", gasto_id, filtro=fonte_key)
 
 def form_pagamento():
+    st.write("**Formulário de Pagamento**")
     with st.container(border=True):
-        st.write("**Formulário de Pagamento**")
         # "participante_id",
         # "projeto_id",
         # "pacote_id",
@@ -1150,8 +1252,8 @@ def form_pagamento():
 
         
 def balanco_financeiro():
+    st.write("**Fluxo de Caixa**")
     with st.container(border=True, horizontal_alignment="center"):
-        st.write("**Resumo**")
         pagamento_df = busca_tabela("pagamento")
         gasto_df = busca_tabela("gasto")
 
@@ -1180,8 +1282,8 @@ def balanco_financeiro():
 
 
 def form_gasto():
+    st.write("**Formulário de Gastos**")
     with st.container(border=True):
-        st.write("**Formulário de Gastos**")
         col1, col2, col3 = st.columns(3)
 
         fonte = col1.selectbox(
@@ -1266,8 +1368,8 @@ def navbar():
 def mostrar_todos_projetos():
     projetos_df = busca_tabela("projeto")    
     data_hoje = datetime.today()
+    st.write("**Histórico**")
     with st.container(border=True, height=454):
-        st.write("**Projetos**")
         for _, linha in projetos_df.iterrows():
             if data_hoje > linha["data_fim"]:
                 projeto_info(linha, ":tada: **:primary[Finalizado!]** :tada:")

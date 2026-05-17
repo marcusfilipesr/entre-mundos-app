@@ -18,6 +18,9 @@ from entre_mundos_app.common import (
     form_editar_pacote,
 )
 
+def add_projeto():
+    st.session_state["form_add_projeto"] = True
+
 def editar_projeto_aberto():
     st.session_state["form_editar_projeto_aberto"] = True
 
@@ -34,14 +37,15 @@ def main():
     default_page_config()
 
     left, center, right = st.columns([0.2, 0.6, 0.2])
+    left.write("**Projetos**")
     proj_container = left.container(border=True)
     with proj_container:
-        st.write("**Projetos**")
         proj_col1, proj_col2 = st.columns(2, vertical_alignment="center")
-        novo_projeto = proj_col1.button(
+        proj_col1.button(
             ":material/travel_explore: Novo",
             type="primary",
-            width="stretch"
+            width="stretch",
+            on_click=add_projeto,
         )
         proj_col2.button(
             ":material/edit_document: Editar",
@@ -56,7 +60,7 @@ def main():
         balanco_financeiro()
 
     with center:
-        if novo_projeto:
+        if st.session_state["form_add_projeto"]:
             form_projeto()
         if st.session_state["form_editar_projeto_aberto"]:
             form_editar_projeto()
@@ -68,16 +72,14 @@ def main():
             form_editar_pacote(st.session_state["editar_pacote_id"])
 
         if st.session_state["projeto_a_gerir"] is not None:
+            titulo_col, fechar_col = st.columns([0.95, 0.05], gap="xxsmall")
+            fechar_col.button(
+                label=":red[:material/close:]",
+                key="btn_fecha_gestao",
+                on_click=fechar_gestão,
+            )
+            titulo_col.subheader(st.session_state['projeto_a_gerir']['nome'])
             with st.container(border=True):
-                titulo_col, fechar_col = st.columns([0.95, 0.05], gap="xxsmall")
-
-                fechar_col.button(
-                    label=":red[:material/close:]",
-                    key="btn_fecha_gestao",
-                    on_click=fechar_gestão,
-                )
-
-                titulo_col.subheader(st.session_state['projeto_a_gerir']['nome'])
                 st.write(f"Quantidade máxima de participantes: `{st.session_state['projeto_a_gerir']['qtd_pessoas']}`")
                 st.write(f"Período: `{st.session_state['projeto_a_gerir']['data_inicio'].strftime('%d/%m/%Y')}` a `{st.session_state['projeto_a_gerir']['data_fim'].strftime('%d/%m/%Y')}`")
                 st.write(f"Localização: `{st.session_state['projeto_a_gerir']['local']}`")

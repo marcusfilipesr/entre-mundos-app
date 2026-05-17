@@ -12,6 +12,7 @@ from entre_mundos_app.common import (
     busca_tabela,
     form_editar_pagamento,
     form_editar_gasto,
+    gestao_financeira_container
 )
 
 
@@ -45,14 +46,14 @@ def main():
         2, vertical_alignment="center"
     )
     # controle_container.divider()
-    add_pagamento = pagamento_col1.button(
+    pagamento_col1.button(
         label=":material/attach_money: Adicionar",
         key="btn_adicionar_pagamento",
         on_click=pagamento_aberto,
         type="primary",
         width="stretch",
     )
-    editar_pagamento = pagamento_col2.button(
+    pagamento_col2.button(
         label=":material/edit: Editar",
         key="btn_editar_pagamento",
         on_click=editar_pagamento_aberto,
@@ -61,14 +62,14 @@ def main():
     )
     controle_container.write("**Gastos**")
     gasto_col1, gasto_col2 = controle_container.columns(2, vertical_alignment="center")
-    add_gasto = gasto_col1.button(
+    gasto_col1.button(
         label=":material/payment_arrow_down: Adicionar",
         key="btn_adicionar_gasto",
         on_click=gasto_aberto,
         type="primary",
         width="stretch",
     )
-    editar_gasto = gasto_col2.button(
+    gasto_col2.button(
         label=":material/edit: Editar",
         key="btn_editar_gasto",
         on_click=editar_gasto_aberto,
@@ -80,24 +81,17 @@ def main():
         balanco_financeiro()
 
     with center:
-        if st.session_state["form_gasto_aberto"]:
-            form_gasto()
-
         if st.session_state["form_pagamento_aberto"]:
             form_pagamento()
-
         if st.session_state["form_editar_pagamento"]:
             form_editar_pagamento()
-
+        
+        if st.session_state["form_gasto_aberto"]:
+            form_gasto()
         if st.session_state["form_editar_gasto"]:
             form_editar_gasto()
 
-        pagamento_df = busca_tabela("pagamento")
-        st.write("Pagamentos")
-        st.write(pagamento_df)
-        gasto_df = busca_tabela("gasto")
-        st.write("Gastos")
-        st.write(gasto_df)
+        gestao_financeira_container()
 
 
 if __name__ == "__main__":
