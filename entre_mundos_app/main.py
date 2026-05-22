@@ -53,6 +53,16 @@ def init_session():
     if "pagamento_pacote_id" not in st.session_state:
         st.session_state["pagamento_pacote_id"] = None
 
+    ## Calculadora
+    if "alterar_taxa" not in st.session_state:
+        st.session_state["alterar_taxa"] = False
+    if "custos" not in st.session_state:
+        st.session_state["custos"] = {
+            "nome": [""],
+            "valor": [0.0],
+            "depende": [True]
+        }
+
 
 def main():
 

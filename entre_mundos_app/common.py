@@ -1361,8 +1361,9 @@ def navbar():
     
     home = st.Page("pages/home.py", title="Home", icon=":material/home:", default=True)
     finance = st.Page("pages/finance.py", title="Financeiro", icon=":material/account_balance:")
+    calculate = st.Page("pages/calculator.py", title="Calculadora", icon=":material/calculate:")
 
-    pg = st.navigation(pages=[home, finance], position="top")
+    pg = st.navigation(pages=[home, finance, calculate], position="top")
     pg.run()
 
 def mostrar_todos_projetos():

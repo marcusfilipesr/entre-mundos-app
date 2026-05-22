@@ -1,0 +1,262 @@
+import pandas as pd
+import numpy as np
+import streamlit as st
+
+from common import default_page_config
+
+qtd_guias = 2
+
+def editar_taxa():
+    st.session_state["alterar_taxa"] = not st.session_state["alterar_taxa"]
+
+def update_custos(custos):
+    if isinstance(custos, pd.DataFrame):
+        st.session_state["custos"] = custos.to_dict(orient="list")
+    else:
+        st.session_state["custos"] = custos
+
+def card_valor(titulo, texto, width="stretch", height=120, color="#31333f"):
+    if isinstance(width, int):
+        height = width // 2
+    with st.container(border=True, width=width, height=height):
+        st.markdown(
+            f"""
+                <div style="text-align: center;">
+                    <a style="font-size:16px;color:#6E6E6E">{titulo}</a>
+                    </br>
+                    <a style="font-size:24px;font-weight:bold;color:{color}">{texto}</a>
+                </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+def card_valor_lucro(titulo, texto, lucro, width="stretch", height=120, color="#31333f"):
+    if isinstance(width, int):
+        height = width
+    with st.container(border=True, width=width, height=height):
+        st.markdown(
+            f"""
+                <div style="text-align: center;">
+                    <a style="font-size:16px;color:#6E6E6E">{titulo}</a>
+                    </br>
+                    <a style="font-size:24px;font-weight:bold;color:{color}">{texto}</a>
+                    </br>
+                    <a style="font-size:14px;font-weight:bold;color:{'#FF6E6E' if lucro < 0 else '#5BBF54'}">R${'' if lucro < 0 else '+'}{lucro:.2f}</a>
+                </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+def card_valor_lucro_parcela(titulo, recebido, pago, lucro, width="stretch", height=150, color="#31333f"):
+    if isinstance(width, int):
+        height = width
+    with st.container(border=True, width=width, height=height):
+        st.markdown(
+            f"""
+                <div style="text-align: center;">
+                    <a style="font-size:16px;color:#6E6E6E">{titulo}</a>
+                    </br>
+                    <a style="font-size:18px;font-weight:bold;color:{color}">{pago}</a>
+                    </br>
+                    <a style="font-size:24px;font-weight:bold;color:{color}">{recebido}</a>
+                    </br>
+                    <a style="font-size:14px;font-weight:bold;color:{'#FF6E6E' if lucro < 0 else '#5BBF54'}">R${'' if lucro < 0 else '+'}{lucro:.2f}</a>
+                </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+def calculo_parcelado(valor, n_parcelas, taxa, taxa_adiantamento):
+    taxa /= 100
+    taxa_adiantamento /= 100
+
+    dias_comercial = 30
+    valor_parcela = valor / n_parcelas
+    valor_taxa = valor_parcela * taxa
+
+    valor_final = 0
+    for parcela in range(1, n_parcelas + 1):
+        descontos = ((parcela * (taxa_adiantamento * ((dias_comercial * parcela) - 1) / (dias_comercial * parcela)) * (valor_parcela - valor_taxa)) + valor_taxa)
+        valor_final += (valor_parcela - descontos)
+
+    return valor_final
+
+def main():
+    default_page_config()
+
+    left, center, right = st.columns([.2, .6, .2], vertical_alignment="top")
+
+    left.write("**Configurações :material/settings:**")
+    config_container = left.container(border=True)
+
+    config_container.toggle(
+        label="Editar taxas",
+        key="alterar_taxa",
+        value=False,
+    )
+
+    taxa_cartao = config_container.number_input(
+        label="Taxa do Cartão %",
+        key="taxa_cartao",
+        min_value=0.0,
+        value=2.49,
+        disabled=(not st.session_state["alterar_taxa"])
+    )
+    taxa_adiantamento = config_container.number_input(
+        label="Taxa de Adiantamento %",
+        key="taxa_adiantamento",
+        min_value=0.0,
+        value=1.25,
+        disabled=(not st.session_state["alterar_taxa"])
+    )
+
+    margem_lucro = config_container.number_input(
+        label="Margem de Lucro %",
+        key="margem_lucro",
+        min_value=0,
+        value=5,
+    )
+
+    desconto_10 = config_container.checkbox(
+        label="Incluir o adicional de 10%",
+        key="desconto_10",
+        value=True,
+        help="Escolha se irá incluir no valor do evento o desconto de 10% para as primeiras Entre Munders."
+    )
+
+    left.write("**Informações do Evento**")
+    evento_config_container = left.container(border=True)
+    qtd_dias = evento_config_container.number_input(
+        label="Quantidade de Dias",
+        min_value=1,
+        key="qtd_dias_evento",
+        value=1,
+    )
+    min_pessoas = evento_config_container.number_input(
+        label="Qtd. Mínima de Pessoas",
+        min_value=1,
+        key="qtd_minima_pessoas",
+        value=4,
+    )
+    valor_diaria = evento_config_container.number_input(
+        label="Valor da Diária **R$**",
+        help="Quanto será pago para cada uma de vocês.",
+        min_value=0.0,
+        value=150.0,
+    )
+
+
+    custos = {
+        "nome": [""],
+        "valor": [0.0],
+        "depende": [True]
+    }
+    if st.session_state["custos"] == custos:
+        fixo_df = pd.DataFrame.from_dict(custos)
+    else:
+        fixo_df = pd.DataFrame.from_dict(st.session_state["custos"])
+
+
+    center_1, center_2 = center.columns(2, vertical_alignment="top")
+    center_1.write("**Custos do Evento**")
+    with center_1:
+        with st.form(key="custo-form", enter_to_submit=False, border=False):
+            custos_atualizado = st.data_editor(
+                data=fixo_df,
+                hide_index=True,
+                column_config={
+                    "nome": st.column_config.TextColumn(
+                        label="Nome",
+                        help="Adicione aqui os custos que não dependem da quantidade de pessoas envolvidas no evento. Por exemplo: "
+                    ),
+                    "valor":st.column_config.NumberColumn(
+                        label="Valor",
+                        default=0.0,
+                        format="R$ %.2f"
+                    ),
+                    "depende": st.column_config.CheckboxColumn(
+                        label="Cobrado por pessoa?",
+                        default=False,
+                    )
+                },
+                num_rows="dynamic"
+            )
+            st.form_submit_button(
+                label="Salvar custos",
+                type="primary",
+                on_click=update_custos,
+                args=(custos_atualizado,),
+            )
+    custo_fixo = 0
+    custo_pessoa = 0
+    for idx, row in custos_atualizado.iterrows():
+        valor = row["valor"]
+        depende = row["depende"]
+        if depende:
+            custo_pessoa += valor
+        else:
+            custo_fixo += valor
+    
+    taxa_incluir = 0
+    if desconto_10:
+        taxa_incluir += 10
+    
+    custo_diaria = qtd_guias * valor_diaria * qtd_dias
+    custo_fixo += custo_diaria
+    if custo_fixo == custo_diaria: # Vazio
+        custo_fixo = 0
+    
+    qtd_pessoas = min_pessoas + qtd_guias
+    custo_variavel = custo_pessoa * qtd_pessoas
+    custo_total = custo_variavel + custo_fixo
+    custo_total_unit = custo_total / min_pessoas
+    valor_unitario = ((custo_variavel * (1 + margem_lucro / 100)) + custo_fixo) / min_pessoas
+    valor_unitario /= (1 - taxa_incluir / 100) if desconto_10 else 1
+
+    center_2.write("**Resumo**")
+    with center_2:
+        center2_col1, center2_col2 = st.columns(2, vertical_alignment="top")
+        with center2_col1:
+            card_valor("Custo Fixo", f"R${custo_fixo:.2f}")
+            card_valor("Custo Total", f"R${custo_total:.2f}")
+        with center2_col2:
+            card_valor("Custo / Pessoa", f"R${custo_pessoa:.2f}")
+            card_valor("Custo Total / Pessoa", f"R${custo_total_unit:.2f}")
+
+    center.divider()
+    center.write("**Parcelamento**")
+    lista_parcelas = [n for n in range(1, 7)]
+    center_col1, center_col2, center_col3, center_col4 = center.columns(4, vertical_alignment="top")
+    qtd_parcelas = center_col1.selectbox(
+        label="Quantidade de Parcelas",
+        options=lista_parcelas,
+        key="qtd_parcelas",
+        index=0,
+    )
+    valor_entre_munders = valor_unitario * (1 - 0.1)
+
+    with center_col2:
+        valor_final = calculo_parcelado(valor_unitario, qtd_parcelas, taxa_cartao, taxa_adiantamento)
+        lucro = valor_final - custo_total_unit
+        card_valor_lucro_parcela(f"Parcelado {qtd_parcelas}x", f"R${valor_final:.2f}", f"R${valor_unitario:.2f}", lucro)
+    with center_col3:
+        valor_final = calculo_parcelado(valor_entre_munders, qtd_parcelas, taxa_cartao, taxa_adiantamento)
+        lucro = valor_final - custo_total_unit
+        card_valor_lucro_parcela(f"EM 10% + Parcelado {qtd_parcelas}x", f"R${valor_final:.2f}", f"R${valor_entre_munders:.2f}", lucro)
+
+    right.write("**Valores Calculados**")
+    with right:
+        lucro = valor_unitario - custo_total_unit
+        card_valor_lucro("Valor do Evento", f"R${valor_unitario:.2f}", lucro, color="#3892FF")
+        valor_pix = valor_unitario * (1 - 0.05)
+        lucro = valor_pix - custo_total_unit
+        card_valor_lucro("Pix 5%", f"R${valor_pix:.2f}", lucro)
+        lucro = valor_entre_munders - custo_total_unit
+        card_valor_lucro("EntreMunders 10%", f"R${valor_entre_munders:.2f}", lucro)
+        valor_final = valor_entre_munders * (1 - 0.05)
+        lucro = valor_final - custo_total_unit
+        card_valor_lucro("EntreMunders 10% + Pix", f"R${valor_final:.2f}", lucro)
+
+
+if __name__ == "__main__":
+    main()
