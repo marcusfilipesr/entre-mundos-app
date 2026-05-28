@@ -57,12 +57,13 @@ def init_session():
     if "alterar_taxa" not in st.session_state:
         st.session_state["alterar_taxa"] = False
     if "custos" not in st.session_state:
-        st.session_state["custos"] = {
-            "nome": [""],
-            "valor": [0.0],
-            "depende": [True]
-        }
-
+        st.session_state["custos"] = pd.DataFrame(
+            {
+                "nome": [""],
+                "valor": [0.0],
+                "depende": [True]
+            }
+        )
 
 def main():
 

@@ -4,16 +4,28 @@ import streamlit as st
 
 from common import default_page_config
 
-qtd_guias = 2
+def dynamic_input_data_editor(data, key, **_kwargs):
+    changed_key = f'{key}_khkhkkhkkhkhkihsdhsaskskhhfgiolwmxkahs'
+    initial_data_key = f'{key}_khkhkkhkkhkhkihsdhsaskskhhfgiolwmxkahs__initial_data'
+
+    def on_data_editor_changed():
+        if 'on_change' in _kwargs:
+            args = _kwargs['args'] if 'args' in _kwargs else ()
+            kwargs = _kwargs['kwargs'] if 'kwargs' in _kwargs else  {}
+            _kwargs['on_change'](*args, **kwargs)
+        st.session_state[changed_key] = True
+
+    if changed_key in st.session_state and st.session_state[changed_key]:
+        data = st.session_state[initial_data_key]
+        st.session_state[changed_key] = False
+    else:
+        st.session_state[initial_data_key] = data
+    __kwargs = _kwargs.copy()
+    __kwargs.update({'data': data, 'key': key, 'on_change': on_data_editor_changed})
+    return st.data_editor(**__kwargs)
 
 def editar_taxa():
     st.session_state["alterar_taxa"] = not st.session_state["alterar_taxa"]
-
-def update_custos(custos):
-    if isinstance(custos, pd.DataFrame):
-        st.session_state["custos"] = custos.to_dict(orient="list")
-    else:
-        st.session_state["custos"] = custos
 
 def card_valor(titulo, texto, width="stretch", height=120, color="#31333f"):
     if isinstance(width, int):
@@ -82,6 +94,8 @@ def calculo_parcelado(valor, n_parcelas, taxa, taxa_adiantamento):
     return valor_final
 
 def main():
+    qtd_guias = 2
+    
     default_page_config()
 
     left, center, right = st.columns([.2, .6, .2], vertical_alignment="top")
@@ -144,49 +158,42 @@ def main():
         min_value=0.0,
         value=150.0,
     )
+    diaria_individual = evento_config_container.checkbox(
+        label="Diária para 1 guia",
+        key="diaria_uma_guia",
+        value=False,
+        help="Se o valor da diária será para uma só (Viki ou Laura). O padrão é considerar a diária para duas."
+    )
 
-
-    custos = {
-        "nome": [""],
-        "valor": [0.0],
-        "depende": [True]
-    }
-    if st.session_state["custos"] == custos:
-        fixo_df = pd.DataFrame.from_dict(custos)
-    else:
-        fixo_df = pd.DataFrame.from_dict(st.session_state["custos"])
-
+    if diaria_individual:
+        qtd_guias = 1
 
     center_1, center_2 = center.columns(2, vertical_alignment="top")
     center_1.write("**Custos do Evento**")
+
     with center_1:
-        with st.form(key="custo-form", enter_to_submit=False, border=False):
-            custos_atualizado = st.data_editor(
-                data=fixo_df,
-                hide_index=True,
-                column_config={
-                    "nome": st.column_config.TextColumn(
-                        label="Nome",
-                        help="Adicione aqui os custos que não dependem da quantidade de pessoas envolvidas no evento. Por exemplo: "
-                    ),
-                    "valor":st.column_config.NumberColumn(
-                        label="Valor",
-                        default=0.0,
-                        format="R$ %.2f"
-                    ),
-                    "depende": st.column_config.CheckboxColumn(
-                        label="Cobrado por pessoa?",
-                        default=False,
-                    )
-                },
-                num_rows="dynamic"
-            )
-            st.form_submit_button(
-                label="Salvar custos",
-                type="primary",
-                on_click=update_custos,
-                args=(custos_atualizado,),
-            )
+        custos_atualizado = dynamic_input_data_editor(
+            data=st.session_state["custos"],
+            key="editor_custos",
+            hide_index=True,
+            column_config={
+                "nome": st.column_config.TextColumn(
+                    label="Nome",
+                    help="Adicione aqui os custos que não dependem da quantidade de pessoas envolvidas no evento. Por exemplo: "
+                ),
+                "valor":st.column_config.NumberColumn(
+                    label="Valor",
+                    default=0.0,
+                    format="R$ %.2f",
+                ),
+                "depende": st.column_config.CheckboxColumn(
+                    label="Cobrado por pessoa?",
+                    default=False,
+                )
+            },
+            num_rows="dynamic",
+        )
+
     custo_fixo = 0
     custo_pessoa = 0
     for idx, row in custos_atualizado.iterrows():
