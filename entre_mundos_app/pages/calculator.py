@@ -1,8 +1,18 @@
+import io
+
 import pandas as pd
 import numpy as np
 import streamlit as st
 
+from datetime import datetime
 from common import default_page_config
+
+def save_output(data):
+    output = io.BytesIO()
+    xls = pd.ExcelWriter(output, engine="xlsxwriter")
+    data.to_excel(xls, index=False)
+    xls.close()
+    return output.getvalue()
 
 def dynamic_input_data_editor(data, key, **_kwargs):
     changed_key = f'{key}_khkhkkhkkhkhkihsdhsaskskhhfgiolwmxkahs'
@@ -164,6 +174,15 @@ def main():
         value=False,
         help="Se o valor da diária será para uma só (Viki ou Laura). O padrão é considerar a diária para duas."
     )
+    left.write("**Carregar Planilha de Custos**")
+    st.session_state["custos_carregado"] = left.file_uploader(
+        label="Insira planilha de custos que deseja",
+        type=['xlsx',],
+        key="uploader_custos"
+    )
+
+    if st.session_state["custos_carregado"] is not None:
+        st.session_state["custos"] = pd.read_excel(st.session_state["custos_carregado"])
 
     if diaria_individual:
         qtd_guias = 1
@@ -192,6 +211,15 @@ def main():
                 )
             },
             num_rows="dynamic",
+        )
+        st.session_state["custos_file"] = save_output(custos_atualizado)
+    
+        st.download_button(
+            label=":material/download: Planilha de Custos",
+            key="baixar_custos",
+            data=st.session_state["custos_file"],
+            file_name=f"Custos - {datetime.today().strftime('%d-%m-%Y')}.xlsx",
+            type="primary",
         )
 
     custo_fixo = 0

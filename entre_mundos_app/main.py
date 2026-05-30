@@ -64,6 +64,11 @@ def init_session():
                 "depende": [True]
             }
         )
+    if "custos_file" not in st.session_state:
+        st.session_state["custos_file"] = None
+    if "custos_carregado" not in st.session_state:
+        st.session_state["custos_carregado"] = None
+    
 
 def main():
 
