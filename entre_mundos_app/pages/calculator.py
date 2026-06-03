@@ -142,13 +142,14 @@ def main():
         "Taxa do Cartão": ["1.99%", "2.49%", "2.99%"],
         "Taxa de Adiantamento": ["1.25%", "1.70%", "1.70%"],
     }
-    tabela_taxa.table(
+    tabela_taxa.dataframe(
         data=taxas,
-        border="horizontal",
+        # border="horizontal",
+        hide_index=True,
         column_config={
             "Condições": st.column_config.TextColumn(label="Condições", width="small"),
-            "Taxa do Cartão": st.column_config.TextColumn(label="Taxa do Cartão", width="small"),
-            "Taxa de Adiantamento": st.column_config.TextColumn(label="Taxa de Adiantamento", width="small"),
+            "Taxa do Cartão": st.column_config.TextColumn(label="Cartão", width="small"),
+            "Taxa de Adiantamento": st.column_config.TextColumn(label="Adiant.", width="small"),
         }
     )
 
@@ -278,7 +279,7 @@ def main():
 
     center.divider()
     center.write("**Parcelamento**")
-    lista_parcelas = [n for n in range(1, 7)]
+    lista_parcelas = [n for n in range(1, 14)]
     center_col1, center_col2, center_col3, center_col4 = center.columns(4, vertical_alignment="top")
     qtd_parcelas = center_col1.selectbox(
         label="Quantidade de Parcelas",
