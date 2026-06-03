@@ -131,7 +131,7 @@ def main():
         label="Taxa de Adiantamento %",
         key="taxa_adiantamento",
         min_value=0.0,
-        value=1.25,
+        value=1.7,
         disabled=(not st.session_state["alterar_taxa"]),
         help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
     )
@@ -142,7 +142,16 @@ def main():
         "Taxa do Cartão": ["1.99%", "2.49%", "2.99%"],
         "Taxa de Adiantamento": ["1.25%", "1.70%", "1.70%"],
     }
-    tabela_taxa.table(taxas)
+    tabela_taxa.table(
+        data=taxas,
+        hide_index=True,
+        border="horizontal",
+        column_config={
+            "Condições": st.column_config.TextColumn(label="Condições", width="small"),
+            "Taxa do Cartão": st.column_config.TextColumn(label="Taxa do Cartão", width="small"),
+            "Taxa de Adiantamento": st.column_config.TextColumn(label="Taxa de Adiantamento", width="small"),
+        }
+    )
 
     margem_lucro = config_container.number_input(
         label="Margem de Lucro %",
