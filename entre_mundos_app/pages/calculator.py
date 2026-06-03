@@ -137,20 +137,13 @@ def main():
     )
 
     tabela_taxa = config_container.expander("Tabela de Taxas", expanded=False)
-    taxas = {
-        "Condições": ["À vista", "De 2x a 6x", "De 7x a 13x"],
-        "Taxa do Cartão": ["1.99%", "2.49%", "2.99%"],
-        "Taxa de Adiantamento": ["1.25%", "1.70%", "1.70%"],
-    }
-    tabela_taxa.dataframe(
-        data=taxas,
-        # border="horizontal",
-        hide_index=True,
-        column_config={
-            "Condições": st.column_config.TextColumn(label="Condições", width="small"),
-            "Taxa do Cartão": st.column_config.TextColumn(label="Cartão", width="small"),
-            "Taxa de Adiantamento": st.column_config.TextColumn(label="Adiant.", width="small"),
-        }
+    tabela_taxa.table(
+        data={
+            "Condições": ["À vista", "De 2x a 6x", "De 7x a 13x"],
+            "Cartão": ["1.99%", "2.49%", "2.99%"],
+            "Adiant.": ["1.25%", "1.70%", "1.70%"],
+        },
+        border="horizontal",
     )
 
     margem_lucro = config_container.number_input(
