@@ -144,7 +144,6 @@ def main():
     }
     tabela_taxa.table(
         data=taxas,
-        hide_index=True,
         border="horizontal",
         column_config={
             "Condições": st.column_config.TextColumn(label="Condições", width="small"),
