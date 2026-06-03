@@ -124,15 +124,25 @@ def main():
         key="taxa_cartao",
         min_value=0.0,
         value=2.49,
-        disabled=(not st.session_state["alterar_taxa"])
+        disabled=(not st.session_state["alterar_taxa"]),
+        help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
     )
     taxa_adiantamento = config_container.number_input(
         label="Taxa de Adiantamento %",
         key="taxa_adiantamento",
         min_value=0.0,
         value=1.25,
-        disabled=(not st.session_state["alterar_taxa"])
+        disabled=(not st.session_state["alterar_taxa"]),
+        help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
     )
+
+    tabela_taxa = config_container.expander("Tabela de Taxas", expanded=False)
+    taxas = {
+        "Condições": ["À vista", "De 2x a 6x", "De 7x a 13x"],
+        "Taxa do Cartão": ["1.99%", "2.49%", "2.99%"],
+        "Taxa de Adiantamento": ["1.25%", "1.70%", "1.70%"],
+    }
+    tabela_taxa.table(taxas)
 
     margem_lucro = config_container.number_input(
         label="Margem de Lucro %",
