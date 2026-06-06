@@ -7,6 +7,11 @@ import streamlit as st
 from datetime import datetime
 from common import default_page_config
 
+tabela_taxa = {
+    "intervalo": ["1;1", "2;6", "7;13"],
+    "cartao": [1.99, 2.49, 2.99],
+    "adiantamento": [1.25, 1.70, 1.70],
+}
 
 def save_output(data):
     output = io.BytesIO()
@@ -126,6 +131,11 @@ def calcular_parcelado(valor_pago, n_parcelas, taxa, taxa_adiantamento, repassar
 
     return valor_pago, valor_receber
 
+def taxas(qtd_parcelas): 
+    for idx, intervalo in enumerate(tabela_taxa["intervalo"]):
+        low, up = intervalo.split(";")
+        if int(low) <= qtd_parcelas <= int(up):
+            return tabela_taxa["cartao"][idx], tabela_taxa["adiantamento"][idx]
 
 def main():
     qtd_guias = 2
@@ -137,38 +147,38 @@ def main():
     left.write("**Configurações :material/settings:**")
     config_container = left.container(border=True)
 
-    config_container.toggle(
-        label="Editar taxas",
-        key="alterar_taxa",
-        value=False,
-    )
+    # config_container.toggle(
+    #     label="Editar taxas",
+    #     key="alterar_taxa",
+    #     value=False,
+    # )
 
-    taxa_cartao = config_container.number_input(
-        label="Taxa do Cartão %",
-        key="taxa_cartao",
-        min_value=0.0,
-        value=2.49,
-        disabled=(not st.session_state["alterar_taxa"]),
-        help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
-    )
-    taxa_adiantamento = config_container.number_input(
-        label="Taxa de Adiantamento %",
-        key="taxa_adiantamento",
-        min_value=0.0,
-        value=1.7,
-        disabled=(not st.session_state["alterar_taxa"]),
-        help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
-    )
+    # taxa_cartao = config_container.number_input(
+    #     label="Taxa do Cartão %",
+    #     key="taxa_cartao",
+    #     min_value=0.0,
+    #     value=2.49,
+    #     disabled=(not st.session_state["alterar_taxa"]),
+    #     help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
+    # )
+    # taxa_adiantamento = config_container.number_input(
+    #     label="Taxa de Adiantamento %",
+    #     key="taxa_adiantamento",
+    #     min_value=0.0,
+    #     value=1.7,
+    #     disabled=(not st.session_state["alterar_taxa"]),
+    #     help="Verifique a tabela de taxas abaixo para ajustas as taxas conforme a forma de pagamento em estudo.",
+    # )
 
-    tabela_taxa = config_container.expander("Tabela de Taxas", expanded=False)
-    tabela_taxa.table(
-        data={
-            "Condições": ["À vista", "De 2x a 6x", "De 7x a 13x"],
-            "Cartão": ["1.99%", "2.49%", "2.99%"],
-            "Adiant.": ["1.25%", "1.70%", "1.70%"],
-        },
-        border="horizontal",
-    )
+    # tabela_taxa = config_container.expander("Tabela de Taxas", expanded=False)
+    # tabela_taxa.table(
+    #     data={
+    #         "Condições": ["À vista", "De 2x a 6x", "De 7x a 13x"],
+    #         "Cartão": ["1.99%", "2.49%", "2.99%"],
+    #         "Adiant.": ["1.25%", "1.70%", "1.70%"],
+    #     },
+    #     border="horizontal",
+    # )
 
     margem_lucro = config_container.number_input(
         label="Margem de Lucro %",
@@ -176,13 +186,27 @@ def main():
         min_value=0,
         value=5,
     )
-
     desconto_10 = config_container.checkbox(
         label="Incluir o adicional de 10%",
         key="desconto_10",
         value=True,
         help="Escolha se irá incluir no valor do evento o desconto de 10% para as primeiras Entre Munders.",
     )
+    lista_parcelas = [n for n in range(1, 14)]
+    qtd_parcelas = config_container.selectbox(
+        label="Quantidade de Parcelas",
+        options=lista_parcelas,
+        key="qtd_parcelas",
+        index=0,
+    )
+    repassar_parcela = config_container.toggle(
+        label="Repassar a taxa",
+        value=False,
+        key="repassar_parcela",
+        help="O valor total das taxas será incluído no valor a ser pago pela Entre Munder.",
+    )
+    taxa_cartao, taxa_adiantamento = taxas(qtd_parcelas)
+    config_container.badge(label=f"Taxa do Cartão: **{taxa_cartao}%** | Taxa de Adiantamento: **{taxa_adiantamento}%**", color="primary")
 
     left.write("**Informações do Evento**")
     evento_config_container = left.container(border=True)
@@ -300,25 +324,12 @@ def main():
 
     center.divider()
     center.write("**Parcelamento**")
-    lista_parcelas = [n for n in range(1, 14)]
     center_col1, center_col2, center_col3, center_col4 = center.columns(
         4, vertical_alignment="top"
     )
-    qtd_parcelas = center_col1.selectbox(
-        label="Quantidade de Parcelas",
-        options=lista_parcelas,
-        key="qtd_parcelas",
-        index=0,
-    )
-    repassar_parcela = center_col1.toggle(
-        label="Repassar a taxa",
-        value=False,
-        key="repassar_parcela",
-        help="O valor total das taxas será incluído no valor a ser pago pela Entre Munder.",
-    )
     valor_entre_munders = valor_unitario * (1 - 0.1)
 
-    with center_col2:
+    with center_col1:
         valor_pago, valor_receber = calcular_parcelado(
             valor_unitario,
             qtd_parcelas,
@@ -333,7 +344,7 @@ def main():
             pago=f"R${valor_pago:.2f}",
             lucro=lucro,
         )
-    with center_col3:
+    with center_col2:
         valor_pago, valor_receber = calcular_parcelado(
             valor_entre_munders,
             qtd_parcelas,
