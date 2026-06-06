@@ -12,7 +12,7 @@ from entre_mundos_app.common import (
     busca_tabela,
     form_editar_pagamento,
     form_editar_gasto,
-    gestao_financeira_container
+    gestao_financeira_container,
 )
 
 
@@ -85,7 +85,7 @@ def main():
             form_pagamento()
         if st.session_state["form_editar_pagamento"]:
             form_editar_pagamento()
-        
+
         if st.session_state["form_gasto_aberto"]:
             form_gasto()
         if st.session_state["form_editar_gasto"]:

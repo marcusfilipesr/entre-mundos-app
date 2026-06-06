@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from entre_mundos_app.common import navbar, default_page_config
 
+
 def init_session():
     ## Gasto
     if "form_gasto_aberto" not in st.session_state:
@@ -14,7 +15,7 @@ def init_session():
         st.session_state["form_editar_gasto_aberto"] = False
     if "editar_gasto_selecao" not in st.session_state:
         st.session_state["editar_gasto_selecao"] = False
-    
+
     ## Projeto
     if "form_add_projeto" not in st.session_state:
         st.session_state["form_add_projeto"] = False
@@ -47,7 +48,7 @@ def init_session():
     if "form_editar_pagamento_aberto" not in st.session_state:
         st.session_state["form_editar_pagamento_aberto"] = False
     if "form_pagamento_aberto" not in st.session_state:
-        st.session_state["form_pagamento_aberto"] = False 
+        st.session_state["form_pagamento_aberto"] = False
     if "pagamento_participante_id" not in st.session_state:
         st.session_state["pagamento_participante_id"] = None
     if "pagamento_pacote_id" not in st.session_state:
@@ -58,17 +59,13 @@ def init_session():
         st.session_state["alterar_taxa"] = False
     if "custos" not in st.session_state:
         st.session_state["custos"] = pd.DataFrame(
-            {
-                "nome": [""],
-                "valor": [0.0],
-                "depende": [True]
-            }
+            {"nome": [""], "valor": [0.0], "depende": [True]}
         )
     if "custos_file" not in st.session_state:
         st.session_state["custos_file"] = None
     if "custos_carregado" not in st.session_state:
         st.session_state["custos_carregado"] = None
-    
+
 
 def main():
 
@@ -81,5 +78,6 @@ def main():
     logo = assets / "logo.png"
     st.logo(logo, size="large")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
