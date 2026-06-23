@@ -9,7 +9,7 @@ from common import default_page_config
 
 tabela_taxa = {
     "intervalo": ["1;1", "2;6", "7;13"],
-    "cartao": [1.99, 2.49, 2.99],
+    "cartao": [2.99, 3.49, 3.99],
     "adiantamento": [1.25, 1.70, 1.70],
 }
 
