@@ -16,6 +16,7 @@ dependencies = [
     "streamlit",
     "openpyxl",
     "plotly",
+    "xlsxwriter",
 ]
 
 [tool.setuptools.dynamic]

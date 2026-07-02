@@ -1,4 +1,5 @@
 import io
+import math
 
 import pandas as pd
 import numpy as np
@@ -6,6 +7,9 @@ import streamlit as st
 
 from datetime import datetime
 from common import default_page_config
+
+def arrendonda_multiplo(num, x):
+    return math.ceil(num / x) * x
 
 tabela_taxa = {
     "intervalo": ["1;1", "2;6", "7;13"],
@@ -180,6 +184,29 @@ def main():
         label=f"Taxa do Cartão: **{taxa_cartao}%** | Taxa de Adiantamento: **{taxa_adiantamento}%**",
         color="primary",
     )
+    arrendondar = config_container.toggle(
+        label="Arrendondar para cima",
+        value=True,
+        key="arredondar",
+        help="O valor do evento será arredondado para o número múltiplo de 5 mais próximo."
+    )
+
+    left.write("**Lotes**")
+    lote_container = left.container(border=True)
+    lista_lotes = [n for n in range(1, 6)]
+    qtd_lotes = lote_container.selectbox(
+        label="Lote N°",
+        options=lista_lotes,
+        key="qtd_lotes",
+        index=0,
+        help="Escolha qual o lote a ser considerado. A partir do 2 lote, é somado o valor adicional acumulativamente."
+    )
+    adicional_lote = lote_container.number_input(
+        label="Adicional por Lote R$",
+        key="adicional_lote",
+        min_value=0,
+        value=100,
+    )
 
     left.write("**Informações do Evento**")
     evento_config_container = left.container(border=True)
@@ -284,6 +311,10 @@ def main():
         (custo_variavel * (1 + margem_lucro / 100)) + custo_fixo
     ) / min_pessoas
     valor_unitario /= (1 - taxa_incluir / 100) if desconto_10 else 1
+    valor_unitario += (qtd_lotes - 1) * adicional_lote
+
+    if arrendondar:
+        valor_unitario = arrendonda_multiplo(valor_unitario, 5)
 
     center_2.write("**Resumo**")
     with center_2:
@@ -344,9 +375,9 @@ def main():
         card_valor_lucro("Pix 5%", f"R${valor_pix:.2f}", lucro)
         lucro = valor_entre_munders - custo_total_unit
         card_valor_lucro("EntreMunders 10%", f"R${valor_entre_munders:.2f}", lucro)
-        valor_receber = valor_entre_munders * (1 - 0.05)
-        lucro = valor_receber - custo_total_unit
-        card_valor_lucro("EntreMunders 10% + Pix", f"R${valor_receber:.2f}", lucro)
+        # valor_receber = valor_entre_munders * (1 - 0.05)
+        # lucro = valor_receber - custo_total_unit
+        # card_valor_lucro("EntreMunders 10% + Pix", f"R${valor_receber:.2f}", lucro)
 
 
 if __name__ == "__main__":
