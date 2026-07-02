@@ -17,6 +17,7 @@ dependencies = [
     "openpyxl",
     "plotly",
     "xlsxwriter",
+    "scipy",
 ]
 
 [tool.setuptools.dynamic]

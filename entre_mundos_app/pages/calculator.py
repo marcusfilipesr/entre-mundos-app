@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
+from scipy.optimize import newton
 from datetime import datetime
 from common import default_page_config
 
@@ -110,31 +111,42 @@ def card_valor_lucro_parcela(
 
 
 def calcular_parcelado(valor_pago, n_parcelas, taxa, taxa_adiantamento, repassar):
-    taxa /= 100
-    taxa_adiantamento /= 100
+    taxa_fixa_cartao=0.49
+    if not repassar:
+        valor_cobrado_cliente = valor_pago
+    else:
+        valor_cobrado_cliente = valor_pago
 
-    dias_comercial = 30
-    valor_parcela = valor_pago / n_parcelas
-    valor_taxa = valor_parcela * taxa
+        def liquido_para_valor_cobrado(venda_bruta):
+            """Retorna o valor líquido (presente) para um determinado valor cobrado do cliente."""
+            # Taxa cartão sobre venda_bruta
+            valor_taxa_cartao_tmp = (taxa / 100.0) * venda_bruta + taxa_fixa_cartao
 
-    valor_receber = 0
-    for parcela in range(1, n_parcelas + 1):
-        desconto = (
-            parcela
-            * (
-                taxa_adiantamento
-                * ((dias_comercial * parcela) - 1)
-                / (dias_comercial * parcela)
-            )
-            * (valor_parcela - valor_taxa)
-        ) + valor_taxa
-        if repassar:
-            valor_pago += desconto
-            valor_receber += valor_parcela
-        else:
-            valor_receber += valor_parcela - desconto
+            # Parcelas
+            valor_parcela_tmp = venda_bruta / n_parcelas
+            i_tmp = taxa_adiantamento / 100.0
 
-    return valor_pago, valor_receber
+            valor_presente_total_tmp = 0.0
+            for n in range(1, n_parcelas + 1):
+                valor_presente_parcela_tmp = valor_parcela_tmp / ((1 + i_tmp) ** n)
+                valor_presente_total_tmp += valor_presente_parcela_tmp
+
+            valor_liquido_tmp = valor_presente_total_tmp - valor_taxa_cartao_tmp
+            return valor_liquido_tmp - valor_pago
+
+        valor_cobrado_cliente = newton(liquido_para_valor_cobrado, valor_pago)
+
+    valor_total_venda = valor_cobrado_cliente
+    valor_taxa_cartao = (taxa / 100.0) * valor_total_venda + taxa_fixa_cartao
+    valor_parcela = valor_total_venda / n_parcelas
+    i = taxa_adiantamento / 100.0
+    valor_presente_total = 0.0
+    for n in range(1, n_parcelas + 1):
+        valor_presente_parcela = valor_parcela / ((1 + i) ** n)
+        valor_presente_total += valor_presente_parcela
+
+    valor_receber = valor_presente_total - valor_taxa_cartao
+    return valor_cobrado_cliente, valor_receber
 
 
 def taxas(qtd_parcelas):
@@ -181,8 +193,14 @@ def main():
     )
     taxa_cartao, taxa_adiantamento = taxas(qtd_parcelas)
     config_container.badge(
-        label=f"Taxa do Cartão: **{taxa_cartao}%** | Taxa de Adiantamento: **{taxa_adiantamento}%**",
+        label=f"Taxa do Cartão: **{taxa_cartao}% + R$ 0,49**",
         color="primary",
+        width="stretch",
+    )
+    config_container.badge(
+        label=f"Taxa de Adiantamento: **{taxa_adiantamento}%**",
+        color="primary",
+        width="stretch",
     )
     arrendondar = config_container.toggle(
         label="Arrendondar para cima",
@@ -312,7 +330,6 @@ def main():
     ) / min_pessoas
     valor_unitario /= (1 - taxa_incluir / 100) if desconto_10 else 1
     valor_unitario += (qtd_lotes - 1) * adicional_lote
-
     if arrendondar:
         valor_unitario = arrendonda_multiplo(valor_unitario, 5)
 
@@ -320,11 +337,11 @@ def main():
     with center_2:
         center2_col1, center2_col2 = st.columns(2, vertical_alignment="top")
         with center2_col1:
-            card_valor("Custo Fixo", f"R${custo_fixo:.2f}")
-            card_valor("Custo Total", f"R${custo_total:.2f}")
+            card_valor("Custo Fixo", f"R$ {custo_fixo:.2f}")
+            card_valor("Custo Total", f"R$ {custo_total:.2f}")
         with center2_col2:
-            card_valor("Custo / Pessoa", f"R${custo_pessoa:.2f}")
-            card_valor("Custo Total / Pessoa", f"R${custo_total_unit:.2f}")
+            card_valor("Custo / Pessoa", f"R$ {custo_pessoa:.2f}")
+            card_valor("Custo Total / Pessoa", f"R$ {custo_total_unit:.2f}")
 
     center.divider()
     center.write("**Parcelamento**")
@@ -344,8 +361,8 @@ def main():
         lucro = valor_receber - custo_total_unit
         card_valor_lucro_parcela(
             titulo=f"Parcelado {qtd_parcelas}x",
-            recebido=f"R${valor_receber:.2f}",
-            pago=f"R${valor_pago:.2f}",
+            recebido=f"R$ {valor_receber:.2f}",
+            pago=f"R$ {valor_pago:.2f}",
             lucro=lucro,
         )
     with center_col2:
@@ -359,8 +376,8 @@ def main():
         lucro = valor_receber - custo_total_unit
         card_valor_lucro_parcela(
             titulo=f"EM 10% + Parcelado {qtd_parcelas}x",
-            recebido=f"R${valor_receber:.2f}",
-            pago=f"R${valor_pago:.2f}",
+            recebido=f"R$ {valor_receber:.2f}",
+            pago=f"R$ {valor_pago:.2f}",
             lucro=lucro,
         )
 
@@ -368,13 +385,13 @@ def main():
     with right:
         lucro = valor_unitario - custo_total_unit
         card_valor_lucro(
-            "Valor do Evento", f"R${valor_unitario:.2f}", lucro, color="#3892FF"
+            "Valor do Evento", f"R$ {valor_unitario:.2f}", lucro, color="#3892FF"
         )
         valor_pix = valor_unitario * (1 - 0.05)
         lucro = valor_pix - custo_total_unit
-        card_valor_lucro("Pix 5%", f"R${valor_pix:.2f}", lucro)
+        card_valor_lucro("Pix 5%", f"R$ {valor_pix:.2f}", lucro)
         lucro = valor_entre_munders - custo_total_unit
-        card_valor_lucro("EntreMunders 10%", f"R${valor_entre_munders:.2f}", lucro)
+        card_valor_lucro("EntreMunders 10%", f"R$ {valor_entre_munders:.2f}", lucro)
         # valor_receber = valor_entre_munders * (1 - 0.05)
         # lucro = valor_receber - custo_total_unit
         # card_valor_lucro("EntreMunders 10% + Pix", f"R${valor_receber:.2f}", lucro)
