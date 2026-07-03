@@ -111,41 +111,34 @@ def card_valor_lucro_parcela(
 
 
 def calcular_parcelado(valor_pago, n_parcelas, taxa, taxa_adiantamento, repassar):
+    taxa /= 100
+    taxa_adiantamento /= 100
     taxa_fixa_cartao=0.49
-    if not repassar:
-        valor_cobrado_cliente = valor_pago
-    else:
-        valor_cobrado_cliente = valor_pago
+    valor_cobrado_cliente = valor_pago
 
-        def liquido_para_valor_cobrado(venda_bruta):
-            """Retorna o valor líquido (presente) para um determinado valor cobrado do cliente."""
-            # Taxa cartão sobre venda_bruta
-            valor_taxa_cartao_tmp = (taxa / 100.0) * venda_bruta + taxa_fixa_cartao
+    def func_calcula(valor):
+        dias_comercial = 30
+        valor_taxa = taxa * valor + taxa_fixa_cartao
+        valor_parcela = (valor - valor_taxa) / n_parcelas
 
-            # Parcelas
-            valor_parcela_tmp = venda_bruta / n_parcelas
-            i_tmp = taxa_adiantamento / 100.0
+        valor_adiantamento = 0
+        for parcela in range(1, n_parcelas + 1):
+            desconto = (
+                taxa_adiantamento
+                * ((dias_comercial + 2.4) * parcela)
+                / (dias_comercial)
+            ) * valor_parcela
+            valor_adiantamento += desconto
+        
+        return valor - (valor_taxa + valor_adiantamento)
 
-            valor_presente_total_tmp = 0.0
-            for n in range(1, n_parcelas + 1):
-                valor_presente_parcela_tmp = valor_parcela_tmp / ((1 + i_tmp) ** n)
-                valor_presente_total_tmp += valor_presente_parcela_tmp
+    if repassar:
+        def func_minimiza(valor):
+            return func_calcula(valor) - valor_pago
+        valor_cobrado_cliente = newton(func_minimiza, valor_pago)
 
-            valor_liquido_tmp = valor_presente_total_tmp - valor_taxa_cartao_tmp
-            return valor_liquido_tmp - valor_pago
+    valor_receber = func_calcula(valor_cobrado_cliente)
 
-        valor_cobrado_cliente = newton(liquido_para_valor_cobrado, valor_pago)
-
-    valor_total_venda = valor_cobrado_cliente
-    valor_taxa_cartao = (taxa / 100.0) * valor_total_venda + taxa_fixa_cartao
-    valor_parcela = valor_total_venda / n_parcelas
-    i = taxa_adiantamento / 100.0
-    valor_presente_total = 0.0
-    for n in range(1, n_parcelas + 1):
-        valor_presente_parcela = valor_parcela / ((1 + i) ** n)
-        valor_presente_total += valor_presente_parcela
-
-    valor_receber = valor_presente_total - valor_taxa_cartao
     return valor_cobrado_cliente, valor_receber
 
 
